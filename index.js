@@ -2,6 +2,7 @@ const { Telegraf, Markup } = require('telegraf')
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys')
 const pino = require('pino')
 const moment = require('moment-timezone')
+const express = require('express')
 
 const bot = new Telegraf(process.env.BOT_TOKEN)
 let sock
@@ -142,5 +143,12 @@ bot.action('pair_info', ctx => {
   ctx.replyWithMarkdown('*📱 PAIR WHATSAPP*\n\nUse: `/pair 2348012345678`\n\nLink your number to use WhatsApp MD')
 })
 
+// FAKE PORT FOR RENDER FREE
 bot.launch()
-console.log(`${BOT_INFO.name} Started`)
+const app = express()
+const PORT = process.env.PORT || 3000
+app.get('/', (req, res) => res.send('VOÏD CROSS MD Online'))
+app.listen(PORT, () => console.log(`${BOT_INFO.name} Started on port ${PORT}`))
+
+process.once('SIGINT', () => bot.stop('SIGINT'))
+process.once('SIGTERM', () => bot.stop('SIGTERM'))
