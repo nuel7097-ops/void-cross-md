@@ -1,15 +1,16 @@
 {
   "name": "void-cross-md",
-  "version": "1.0.0",
-  "description": "VOID CROSS MD Telegram Bot",
-  "type": "module",
+  "version": "1.9.1",
+  "description": "VOÏD CROSS MD - WhatsApp Bot Controller",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "telegraf": "^4.16.3",
-    "dotenv": "^16.4.5"
+    "telegraf": "^4.15.0",
+    "@whiskeysockets/baileys": "^6.7.8",
+    "pino": "^8.17.0",
+    "moment-timezone": "^0.5.45"
   },
   "engines": {
     "node": ">=18.0.0"
