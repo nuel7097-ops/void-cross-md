@@ -4,7 +4,7 @@ dotenv.config();
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const PORT = process.env.PORT || 3000;
-const URL = 'https://void-cross-md.onrender.com';
+const URL = 'https://void-cross-md-2.onrender.com';
 
 bot.start((ctx) => ctx.reply('VOÏD CROSS MD is online 🔥\nUse /ping to test me'));
 
