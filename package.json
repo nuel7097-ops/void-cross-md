@@ -1,7 +1,8 @@
 {
   "name": "void-cross-md",
   "version": "1.0.0",
-  "description": "VOÏD CROSS MD Telegram Bot",
+  "description": "VOID CROSS MD Telegram Bot",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
