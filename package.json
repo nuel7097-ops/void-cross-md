@@ -7,7 +7,7 @@
     "start": "node --expose-gc index.js"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "18.x"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.8",
@@ -15,7 +15,4 @@
     "pino": "^9.0.0",
     "telegraf": "^4.16.3"
   }
-}
-"engines": {
-  "node": "18.x"
 }
