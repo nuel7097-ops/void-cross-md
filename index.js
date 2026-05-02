@@ -4,11 +4,12 @@ const express = require('express')
 const os = require('os')
 const axios = require('axios')
 const fs = require('fs')
+const { exec } = require('child_process')
 
 let sock
 let startTime = Date.now()
 
-// BOT CONFIG
+// BOT CONFIG - YOUR BRANDING
 const BOT_INFO = {
   name: "༗༊𝐕𝐎𝐈𝐃-𝐂𝐑𝐎𝐒 𝐌𝐃彡★🦋❦",
   dev: "༄𝐌𝐑.𝐍𝐔𝐄𝐋♛",
@@ -17,22 +18,21 @@ const BOT_INFO = {
   mode: "public"
 }
 
-// API KEYS - ADD YOURS HERE
+// API KEYS
 const API_KEYS = {
-  gpt: process.env.GPT_KEY || "", // Get from OpenAI
-  gemini: process.env.GEMINI_KEY || "", // Get from Google AI Studio
-  ytdl: "https://api.dreaded.site" // Free YT API
+  gpt: process.env.GPT_KEY || "",
+  gemini: process.env.GEMINI_KEY || "",
+  ytdl: "https://api.dreaded.site",
+  removebg: process.env.REMOVEBG_KEY || ""
 }
 
-// EXPRESS - KEEPS RENDER ALIVE
+// EXPRESS
 const app = express()
 app.get('/', (req, res) => res.send(`${BOT_INFO.name} v3.0.6 ULTRA by ${BOT_INFO.dev} Online`))
 app.listen(process.env.PORT || 3000, () => console.log(`[${BOT_INFO.name}] Server running`))
 
-// AUTO GC - FIXES RAM LEAK
-setInterval(() => {
-  if (global.gc) global.gc()
-}, 30000)
+// AUTO GC
+setInterval(() => { if (global.gc) global.gc() }, 30000)
 
 // WHATSAPP CONNECTION
 async function connectWA() {
@@ -49,7 +49,6 @@ async function connectWA() {
   })
 
   sock.ev.on('creds.update', saveCreds)
-
   sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
     if (connection === 'close') {
       const shouldReconnect = lastDisconnect?.error?.output?.statusCode!== DisconnectReason.loggedOut
@@ -64,23 +63,24 @@ async function connectWA() {
     const m = messages[0]
     if (!m.message || m.key.fromMe) return
     
-    const body = m.message.conversation || m.message.extendedTextMessage?.text || m.message.imageMessage?.caption || ''
+    const body = m.message.conversation || m.message.extendedTextMessage?.text || m.message.imageMessage?.caption || m.message.videoMessage?.caption || ''
     if (!body.startsWith(BOT_INFO.prefix)) return
     
     const cmd = body.slice(1).split(' ')[0].toLowerCase()
     const args = body.slice(BOT_INFO.prefix.length + cmd.length).trim()
     const from = m.key.remoteJid
     const sender = m.key.participant || from
+    const isGroup = from.endsWith('@g.us')
+    const mentioned = m.message.extendedTextMessage?.contextInfo?.mentionedJid || []
 
     try {
       switch(cmd) {
-        case 'menu':
-        case 'help':
+        // 📡 GENERAL
+        case 'menu': case 'help':
           await sendMenu(from, m)
           break
         
-        case 'ping':
-        case 'alive':
+        case 'ping': case 'alive':
           const { speed } = getStats()
           await sock.sendMessage(from, { text: `*Pong!* 🏓\nSpeed: ${speed}ms\nStatus: ONLINE\n*Bot: ${BOT_INFO.name}*\n*Dev: ${BOT_INFO.dev}*` }, { quoted: m })
           break
@@ -89,58 +89,55 @@ async function connectWA() {
           await sock.sendMessage(from, { text: `*Owner:* ${BOT_INFO.dev}\n*Bot:* ${BOT_INFO.name}\n*Version:* ${BOT_INFO.version}` }, { quoted: m })
           break
 
-        case 'play':
-        case 'song':
-          if (!args) return sock.sendMessage(from, { text: `*Usage:* ${BOT_INFO.prefix}play faded` }, { quoted: m })
-          await sock.sendMessage(from, { text: `🔍 *Searching:* ${args}...` }, { quoted: m })
-          try {
-            const res = await axios.get(`${API_KEYS.ytdl}/api/ytdl/audio?query=${encodeURIComponent(args)}`)
-            if (res.data.status && res.data.result.download_url) {
-              await sock.sendMessage(from, { 
-                audio: { url: res.data.result.download_url }, 
-                mimetype: 'audio/mpeg',
-                fileName: `${res.data.result.title}.mp3`
-              }, { quoted: m })
-            } else {
-              await sock.sendMessage(from, { text: `❌ Song not found` }, { quoted: m })
-            }
-          } catch (e) {
-            await sock.sendMessage(from, { text: `❌ API Error: ${e.message}` }, { quoted: m })
-          }
+        case 'jid': case 'url':
+          await sock.sendMessage(from, { text: `*Chat JID:* ${from}\n*User JID:* ${sender}` }, { quoted: m })
           break
 
-        case 'tiktok':
-        case 'tt':
-          if (!args) return sock.sendMessage(from, { text: `*Usage:* ${BOT_INFO.prefix}tiktok <url>` }, { quoted: m })
-          await sock.sendMessage(from, { text: `⏳ *Downloading...*` }, { quoted: m })
-          try {
-            const res = await axios.get(`${API_KEYS.ytdl}/api/tiktok?url=${args}`)
-            if (res.data.status && res.data.result.video) {
-              await sock.sendMessage(from, { 
-                video: { url: res.data.result.video }, 
-                caption: `*Title:* ${res.data.result.title}\n*By ${BOT_INFO.name}*`
-              }, { quoted: m })
-            } else {
-              await sock.sendMessage(from, { text: `❌ Invalid TikTok URL` }, { quoted: m })
-            }
-          } catch (e) {
-            await sock.sendMessage(from, { text: `❌ API Error: ${e.message}` }, { quoted: m })
-          }
+        case 'joke':
+          const jokes = ["Why don't scientists trust atoms? Because they make up everything!", "I told my wife she was drawing her eyebrows too high. She looked surprised."]
+          await sock.sendMessage(from, { text: jokes[Math.floor(Math.random()*jokes.length)] }, { quoted: m })
           break
 
+        case 'quote':
+          const quotes = ["The only way to do great work is to love what you do. - Steve Jobs", "Code is like humor. When you have to explain it, it's bad."]
+          await sock.sendMessage(from, { text: quotes[Math.floor(Math.random()*quotes.length)] }, { quoted: m })
+          break
+
+        case 'fact':
+          await sock.sendMessage(from, { text: `*Fact:* Honey never spoils. Archaeologists have found 3000-year-old honey in Egyptian tombs that's still edible.` }, { quoted: m })
+          break
+
+        case '8ball':
+          if (!args) return sock.sendMessage(from, { text: `*Usage:* ${BOT_INFO.prefix}8ball will I be rich` }, { quoted: m })
+          const responses = ["Yes", "No", "Maybe", "Definitely", "Ask again later", "Without a doubt"]
+          await sock.sendMessage(from, { text: `🎱 *Question:* ${args}\n*Answer:* ${responses[Math.floor(Math.random()*responses.length)]}` }, { quoted: m })
+          break
+
+        case 'weather':
+          if (!args) return sock.sendMessage(from, { text: `*Usage:* ${BOT_INFO.prefix}weather Lagos` }, { quoted: m })
+          try {
+            const res = await axios.get(`https://wttr.in/${args}?format=3`)
+            await sock.sendMessage(from, { text: `*Weather:* ${res.data}` }, { quoted: m })
+          } catch { await sock.sendMessage(from, { text: `❌ City not found` }, { quoted: m }) }
+          break
+
+        case 'groupinfo':
+          if (!isGroup) return sock.sendMessage(from, { text: `❌ Group only` }, { quoted: m })
+          const metadata = await sock.groupMetadata(from)
+          await sock.sendMessage(from, { text: `*Group:* ${metadata.subject}\n*Members:* ${metadata.participants.length}\n*ID:* ${from}` }, { quoted: m })
+          break
+
+        // 🧠 AI POWER
         case 'gpt':
           if (!args) return sock.sendMessage(from, { text: `*Usage:* ${BOT_INFO.prefix}gpt who is messi` }, { quoted: m })
           if (!API_KEYS.gpt) return sock.sendMessage(from, { text: `❌ GPT API key not set` }, { quoted: m })
           await sock.sendMessage(from, { text: `🤖 *Thinking...*` }, { quoted: m })
           try {
             const res = await axios.post('https://api.openai.com/v1/chat/completions', {
-              model: 'gpt-3.5-turbo',
-              messages: [{ role: 'user', content: args }]
+              model: 'gpt-3.5-turbo', messages: [{ role: 'user', content: args }]
             }, { headers: { 'Authorization': `Bearer ${API_KEYS.gpt}` }})
             await sock.sendMessage(from, { text: res.data.choices[0].message.content }, { quoted: m })
-          } catch (e) {
-            await sock.sendMessage(from, { text: `❌ GPT Error: ${e.message}` }, { quoted: m })
-          }
+          } catch (e) { await sock.sendMessage(from, { text: `❌ GPT Error: ${e.message}` }, { quoted: m }) }
           break
 
         case 'gemini':
@@ -152,80 +149,78 @@ async function connectWA() {
               contents: [{ parts: [{ text: args }] }]
             })
             await sock.sendMessage(from, { text: res.data.candidates[0].content.parts[0].text }, { quoted: m })
-          } catch (e) {
-            await sock.sendMessage(from, { text: `❌ Gemini Error: ${e.message}` }, { quoted: m })
-          }
+          } catch (e) { await sock.sendMessage(from, { text: `❌ Gemini Error: ${e.message}` }, { quoted: m }) }
           break
 
-        default:
-          await sock.sendMessage(from, { text: `❌ Command *${cmd}* not found. Use ${BOT_INFO.prefix}menu` }, { quoted: m })
-      }
-    } catch (e) {
-      console.error('Command Error:', e)
-      await sock.sendMessage(from, { text: `❌ Error: ${e.message}` }, { quoted: m })
-    }
-  })
-}
-connectWA()
+        // 🎬 MEDIA & DOWNLOAD
+        case 'play': case 'song':
+          if (!args) return sock.sendMessage(from, { text: `*Usage:* ${BOT_INFO.prefix}play faded` }, { quoted: m })
+          await sock.sendMessage(from, { text: `🔍 *Searching:* ${args}...` }, { quoted: m })
+          try {
+            const res = await axios.get(`${API_KEYS.ytdl}/api/ytdl/audio?query=${encodeURIComponent(args)}`)
+            if (res.data.status && res.data.result.download_url) {
+              await sock.sendMessage(from, { audio: { url: res.data.result.download_url }, mimetype: 'audio/mpeg', fileName: `${res.data.result.title}.mp3` }, { quoted: m })
+            } else { await sock.sendMessage(from, { text: `❌ Song not found` }, { quoted: m }) }
+          } catch (e) { await sock.sendMessage(from, { text: `❌ API Error: ${e.message}` }, { quoted: m }) }
+          break
 
-// STATS FUNCTION
-function getStats() {
-  const usedMemMB = process.memoryUsage().heapUsed / 1024 / 1024
-  const totalMemMB = os.totalmem() / 1024 / 1024
-  const ramPercent = Math.min(((usedMemMB / totalMemMB) * 100), 99).toFixed(0)
-  const ramBar = '▓'.repeat(Math.floor(ramPercent / 5)) + '░'.repeat(20 - Math.floor(ramPercent / 5))
-  const uptime = process.uptime()
-  const h = Math.floor(uptime / 3600)
-  const m = Math.floor((uptime % 3600) / 60)
-  const s = Math.floor(uptime % 60)
-  const speed = Math.floor(Math.random() * 40) + 15
+        case 'video':
+          if (!args) return sock.sendMessage(from, { text: `*Usage:* ${BOT_INFO.prefix}video faded` }, { quoted: m })
+          await sock.sendMessage(from, { text: `🔍 *Searching:* ${args}...` }, { quoted: m })
+          try {
+            const res = await axios.get(`${API_KEYS.ytdl}/api/ytdl/video?query=${encodeURIComponent(args)}`)
+            if (res.data.status && res.data.result.download_url) {
+              await sock.sendMessage(from, { video: { url: res.data.result.download_url }, caption: `*${res.data.result.title}*\n*By ${BOT_INFO.name}*` }, { quoted: m })
+            } else { await sock.sendMessage(from, { text: `❌ Video not found` }, { quoted: m }) }
+          } catch (e) { await sock.sendMessage(from, { text: `❌ API Error: ${e.message}` }, { quoted: m }) }
+          break
 
-  return {
-    usedMem: usedMemMB.toFixed(0),
-    ramPercent,
-    ramBar,
-    speed,
-    runtime: `${h}h ${m}m ${s}s`
-  }
-}
+        case 'tiktok': case 'tt':
+          if (!args) return sock.sendMessage(from, { text: `*Usage:* ${BOT_INFO.prefix}tiktok <url>` }, { quoted: m })
+          await sock.sendMessage(from, { text: `⏳ *Downloading...*` }, { quoted: m })
+          try {
+            const res = await axios.get(`${API_KEYS.ytdl}/api/tiktok?url=${args}`)
+            if (res.data.status && res.data.result.video) {
+              await sock.sendMessage(from, { video: { url: res.data.result.video }, caption: `*By ${BOT_INFO.name}*` }, { quoted: m })
+            } else { await sock.sendMessage(from, { text: `❌ Invalid TikTok URL` }, { quoted: m }) }
+          } catch (e) { await sock.sendMessage(from, { text: `❌ API Error: ${e.message}` }, { quoted: m }) }
+          break
 
-// MENU FUNCTION
-async function sendMenu(jid, m) {
-  const { usedMem, ramPercent, ramBar, speed, runtime } = getStats()
-  
-  const menuText = `╔══════════════════════════════╗
-║ ⚡ ${BOT_INFO.name} ⚡ ║
-╠══════════════════════════════╣
-║ Bot: ${BOT_INFO.name} ║
-║ Dev: ${BOT_INFO.dev} ║
-║ Build: ${BOT_INFO.version} ║
-║ Status: ONLINE ║
-║ Runtime:${runtime} ║
-║ RAM: ${usedMem} MB ║
-║ Mode: ${BOT_INFO.mode} ║
-║ Prefix: ${BOT_INFO.prefix} ║
-╚══════════════════════════════╝
+        case 'instagram': case 'ig':
+          if (!args) return sock.sendMessage(from, { text: `*Usage:* ${BOT_INFO.prefix}instagram <url>` }, { quoted: m })
+          await sock.sendMessage(from, { text: `⏳ *Downloading...*` }, { quoted: m })
+          try {
+            const res = await axios.get(`${API_KEYS.ytdl}/api/instagram?url=${args}`)
+            if (res.data.status && res.data.result.video) {
+              await sock.sendMessage(from, { video: { url: res.data.result.video }, caption: `*By ${BOT_INFO.name}*` }, { quoted: m })
+            } else { await sock.sendMessage(from, { text: `❌ Invalid Instagram URL` }, { quoted: m }) }
+          } catch (e) { await sock.sendMessage(from, { text: `❌ API Error: ${e.message}` }, { quoted: m }) }
+          break
 
-◈───────────◈ 📡 GENERAL ◈───────────◈
-| ${BOT_INFO.prefix}help / ${BOT_INFO.prefix}menu | ${BOT_INFO.prefix}ping / ${BOT_INFO.prefix}alive
-| ${BOT_INFO.prefix}owner | ${BOT_INFO.prefix}jid
+        // 🛡️ ADMIN PANEL
+        case 'tagall':
+          if (!isGroup) return sock.sendMessage(from, { text: `❌ Group only` }, { quoted: m })
+          const groupMeta = await sock.groupMetadata(from)
+          const members = groupMeta.participants.map(u => u.id)
+          await sock.sendMessage(from, { text: args || `Tagged by ${BOT_INFO.name}`, mentions: members }, { quoted: m })
+          break
 
-◈───────────◈ 🧠 AI POWER ◈───────────◈
-| ${BOT_INFO.prefix}gpt <question> | 
-| ${BOT_INFO.prefix}gemini <question>| 
+        case 'hidetag':
+          if (!isGroup) return sock.sendMessage(from, { text: `❌ Group only` }, { quoted: m })
+          const gMeta = await sock.groupMetadata(from)
+          const mems = gMeta.participants.map(u => u.id)
+          await sock.sendMessage(from, { text: args || '.', mentions: mems }, { quoted: m })
+          break
 
-◈───────────◈ 🎬 MEDIA & DOWNLOAD ◈───────────◈
-| ${BOT_INFO.prefix}play <song> | ${BOT_INFO.prefix}song <name>
-| ${BOT_INFO.prefix}tiktok <url> | 
+        case 'kick': case 'ban':
+          if (!isGroup) return sock.sendMessage(from, { text: `❌ Group only` }, { quoted: m })
+          if (!mentioned[0]) return sock.sendMessage(from, { text: `*Usage:* ${BOT_INFO.prefix}kick @user` }, { quoted: m })
+          try {
+            await sock.groupParticipantsUpdate(from, [mentioned[0]], 'remove')
+            await sock.sendMessage(from, { text: `✅ Kicked @${mentioned[0].split('@')[0]}`, mentions: [mentioned[0]] }, { quoted: m })
+          } catch { await sock.sendMessage(from, { text: `❌ Failed. Bot needs admin` }, { quoted: m }) }
+          break
 
-RAM ${ramBar} ${ramPercent}%
-
-◈───── 📣 ${BOT_INFO.name} ─────◈
-    🔥 "${BOT_INFO.name} RUNS THIS"
-    *Coded by ${BOT_INFO.dev}*`
-
-  await sock.sendMessage(jid, { text: menuText }, { quoted: m })
-}
-
-process.on('uncaughtException', console.error)
-process.on('unhandledRejection', console.error)
+        case 'promote':
+          if (!isGroup) return sock.sendMessage(from, { text: `❌ Group only` }, { quoted: m })
+          if (!mentioned[0]) return sock.sendMessage(from, { text: `*Usage
