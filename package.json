@@ -1,19 +1,18 @@
 {
   "name": "void-cross-md",
   "version": "1.9.1",
-  "description": "VOÏD CROSS MD - WhatsApp Bot Controller",
+  "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "telegraf": "^4.15.0",
-    "@whiskeysockets/baileys": "^6.7.8",
-    "pino": "^8.17.0",
-    "moment-timezone": "^0.5.45",
-    "express": "^4.18.2"
+    "start": "node --expose-gc index.js"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.8",
+    "express": "^4.19.2",
+    "pino": "^9.0.0",
+    "telegraf": "^4.16.3"
   }
 }
