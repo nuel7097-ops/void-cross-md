@@ -1,6 +1,6 @@
 {
-  "name": "void-cross-md",
-  "version": "1.9.1",
+  "name": "void-cros-md",
+  "version": "3.0.6",
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
@@ -13,6 +13,6 @@
     "@whiskeysockets/baileys": "^6.7.8",
     "express": "^4.19.2",
     "pino": "^9.0.0",
-    "telegraf": "^4.16.3"
+    "axios": "^1.7.2"
   }
 }
